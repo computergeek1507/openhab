@@ -18,7 +18,6 @@ import java.util.concurrent.TimeUnit;
 import org.openhab.binding.myq.MyqBindingProvider;
 import org.openhab.binding.myq.internal.MyqBindingConfig;
 import org.openhab.binding.myq.internal.GarageDoorDevice.GarageDoorStatus;
-import org.openhab.binding.myq.internal.MyqData.InvalidLoginException;
 import org.apache.commons.lang.StringUtils;
 import org.openhab.core.binding.AbstractBinding;
 import org.openhab.core.library.types.OnOffType;
@@ -26,7 +25,9 @@ import org.openhab.core.library.types.PercentType;
 import org.openhab.core.library.types.StringType;
 import org.openhab.core.library.types.OpenClosedType;
 import org.openhab.core.library.types.UpDownType;
+import org.openhab.core.types.State;
 import org.openhab.core.types.Command;
+import org.openhab.core.types.UnDefType;
 import org.osgi.framework.BundleContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -132,13 +133,26 @@ public class MyqBinding extends AbstractBinding<MyqBindingProvider> {
 		String usernameString = (String) configuration.get("username");
 		String passwordString = (String) configuration.get("password");
 
+		String appId = (String) configuration.get("appId");
+		if (StringUtils.isBlank(appId)) {
+			appId = MyqData.DEFAULT_APP_ID;
+		}
+
+		int timeout = MyqData.DEFAUALT_TIMEOUT;
+		String timeoutString = (String) configuration.get("timeout");
+		if (StringUtils.isNotBlank(timeoutString)) {
+			timeout = Integer.parseInt(timeoutString);
+		}
+
 		// reinitialize connection object if username and password is changed
 		if (StringUtils.isNotBlank(usernameString)
 				&& StringUtils.isNotBlank(passwordString)) {
-			myqOnlineData = new MyqData(usernameString, passwordString);
+			myqOnlineData = new MyqData(usernameString, passwordString, appId,
+					timeout);
+
+			invalidCredentials = false;
+			schedulePoll(refreshInterval);
 		}
-		invalidCredentials = false;
-		schedulePoll(refreshInterval);
 	}
 
 	/**
@@ -175,6 +189,7 @@ public class MyqBinding extends AbstractBinding<MyqBindingProvider> {
 	 */
 	private void poll() {
 		if (invalidCredentials || this.myqOnlineData == null) {
+			logger.debug("Invalid Account Credentials");
 			return;
 		}
 
@@ -187,37 +202,59 @@ public class MyqBinding extends AbstractBinding<MyqBindingProvider> {
 					MyqBindingConfig deviceConfig = getConfigForItemName(mygItemName);
 
 					if (deviceConfig != null) {
-						GarageDoorDevice garageopener = garageStatus.getDevice(deviceConfig.deviceIndex);
+						GarageDoorDevice garageopener = garageStatus
+								.getDevice(deviceConfig.deviceIndex);
 						if (garageopener != null) {
-							if (deviceConfig.type == MyqBindingConfig.ITEMTYPE.StringStatus) {
-								eventPublisher.postUpdate(mygItemName,
-										new StringType(garageopener.getStatus()
-												.getLabel()));
-							}
-							if (deviceConfig.type == MyqBindingConfig.ITEMTYPE.ContactStatus) {
-								if (garageopener.getStatus() == GarageDoorStatus.CLOSED) {
-									eventPublisher.postUpdate(mygItemName,
-											OpenClosedType.CLOSED);
-								} else {
-									eventPublisher.postUpdate(mygItemName,
-											OpenClosedType.OPEN);
+
+							State newState = UnDefType.UNDEF;
+							for (Class<? extends State> type : deviceConfig.acceptedDataTypes) {
+								if (OpenClosedType.class == type) {
+									if (garageopener.getStatus() == GarageDoorStatus.CLOSED) {
+										newState = OpenClosedType.CLOSED;
+										break;
+									} else {
+										newState = OpenClosedType.OPEN;
+										break;
+									}
+								} else if (UpDownType.class == type) {
+									if (garageopener.getStatus() == GarageDoorStatus.CLOSED) {
+										newState = UpDownType.DOWN;
+										break;
+									} else if (garageopener.getStatus() == GarageDoorStatus.OPEN) {
+										newState = UpDownType.UP;
+										break;
+									}
+								} else if (OnOffType.class == type) {
+									if (garageopener.getStatus() == GarageDoorStatus.CLOSED) {
+										newState = OnOffType.OFF;
+										break;
+									} else {
+										newState = OnOffType.ON;
+										break;
+									}
+								} else if (PercentType.class == type) {
+									switch (garageopener.getStatus()) {
+									case OPEN:
+										newState = PercentType.ZERO;
+										break;
+									case CLOSED:
+										newState = PercentType.HUNDRED;
+										break;
+									case CLOSING:
+									case OPENING:
+									case PARTIAL:
+										newState = new PercentType(50);
+										break;
+									default:
+										break;
+									}
+								} else if (StringType.class == type) {
+									newState = new StringType(garageopener
+											.getStatus().getLabel());
+									break;
 								}
 							}
-							if (deviceConfig.type == MyqBindingConfig.ITEMTYPE.Rollershutter) {
-								if (garageopener.getStatus() == GarageDoorStatus.CLOSED) {
-									eventPublisher.postUpdate(mygItemName,
-											UpDownType.DOWN);
-								} else if (garageopener.getStatus() == GarageDoorStatus.OPEN) {
-									eventPublisher.postUpdate(mygItemName,
-											UpDownType.UP);
-								}
-								// if its not open, close or unknown then its in
-								// a half-way state.
-								else if (garageopener.getStatus() != GarageDoorStatus.UNKNOWN) {
-									eventPublisher.postUpdate(mygItemName,
-											new PercentType(50));
-								}
-							}
+							eventPublisher.postUpdate(mygItemName, newState);
 
 							// make sure we are polling frequently
 							if (garageopener.getStatus().inMotion()) {
@@ -236,7 +273,7 @@ public class MyqBinding extends AbstractBinding<MyqBindingProvider> {
 	}
 
 	/**
-	 * @{inheritDoc
+	 * @{inheritDoc}
 	 */
 	@Override
 	public void internalReceiveCommand(String itemName, Command command) {
@@ -245,6 +282,9 @@ public class MyqBinding extends AbstractBinding<MyqBindingProvider> {
 				command, itemName);
 		if (myqOnlineData != null) {
 			computeCommandForItem(command, itemName);
+		} else {
+			logger.warn("Command '{}' for item '{}' not sent", command,
+					itemName);
 		}
 	}
 
@@ -259,36 +299,27 @@ public class MyqBinding extends AbstractBinding<MyqBindingProvider> {
 	 *            The name of the targeted item.
 	 */
 	private void computeCommandForItem(Command command, String itemName) {
-		
+
 		MyqBindingConfig deviceConfig = getConfigForItemName(itemName);
-		
+
 		if (invalidCredentials || deviceConfig == null) {
 			return;
 		}
 
 		try {
 			GarageDoorData garageStatus = myqOnlineData.getGarageData();
-			GarageDoorDevice garageopener = garageStatus.getDevice(deviceConfig.deviceIndex);
+			GarageDoorDevice garageopener = garageStatus
+					.getDevice(deviceConfig.deviceIndex);
 			if (garageopener != null) {
-				// only send command if switch is flipped on like pushbutton
-				if ((command instanceof OnOffType && OnOffType.ON
-						.equals(command))) {
-					if (garageopener.getStatus().isClosedOrClosing()) {
-						myqOnlineData.executeGarageDoorCommand(
-								garageopener.getDeviceId(), 1);
-					} else {
-						myqOnlineData.executeGarageDoorCommand(
-								garageopener.getDeviceId(), 0);
-					}
+				if (command.equals(OnOffType.ON)
+						|| command.equals(UpDownType.UP)) {
+					myqOnlineData.executeGarageDoorCommand(
+							garageopener.getDeviceId(), 1);
 					beginRapidPoll(true);
-				} else if (command instanceof UpDownType) {
-					if (UpDownType.UP.equals(command)) {
-						myqOnlineData.executeGarageDoorCommand(
-								garageopener.getDeviceId(), 1);
-					} else {
-						myqOnlineData.executeGarageDoorCommand(
-								garageopener.getDeviceId(), 0);
-					}
+				} else if (command.equals(OnOffType.OFF)
+						|| command.equals(UpDownType.DOWN)) {
+					myqOnlineData.executeGarageDoorCommand(
+							garageopener.getDeviceId(), 0);
 					beginRapidPoll(true);
 				} else {
 					logger.warn("Unknown command {}", command);

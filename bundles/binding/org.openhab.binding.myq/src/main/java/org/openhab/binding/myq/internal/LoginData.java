@@ -17,10 +17,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * This Class parses the JSON data and stores if the login request was
+ * This Class parses the JSON data and throws if the login request was not
  * successful.
  * <ul>
- * <li>success: json request was successful</li>
  * <li>securityToken: securityToken from login request</li>
  * </ul>
  * 
@@ -36,15 +35,16 @@ public class LoginData {
 	 * Constructor of the LoginData.
 	 * 
 	 * @param loginData
-	 *            The Json string as it has been returned myq website.
+	 *            The Json node from the myq website.
 	 */
 	@SuppressWarnings("unchecked")
-	public LoginData(JsonNode root) throws IOException {
+	public LoginData(JsonNode root) throws IOException, InvalidDataException {
 		ObjectMapper mapper = new ObjectMapper();
 		Map<String, Object> treeData = mapper.readValue(root, Map.class);
 		Object data = treeData.get("SecurityToken");
-		if(data == null)
-			throw new IOException("Could not find SecurityToken in JSON data");
+		if (data == null)
+			throw new InvalidDataException(
+					"Could not find SecurityToken in JSON data");
 		securityToken = data.toString();
 		logger.debug("myq securityToken: {}", securityToken);
 	}

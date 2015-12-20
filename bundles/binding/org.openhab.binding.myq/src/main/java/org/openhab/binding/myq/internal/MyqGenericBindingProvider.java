@@ -12,12 +12,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.openhab.binding.myq.MyqBindingProvider;
-import org.openhab.binding.myq.internal.MyqBindingConfig.ITEMTYPE;
 import org.openhab.core.items.Item;
 import org.openhab.core.library.items.RollershutterItem;
 import org.openhab.core.library.items.SwitchItem;
 import org.openhab.core.library.items.ContactItem;
 import org.openhab.core.library.items.StringItem;
+import org.openhab.core.types.State;
 import org.openhab.model.item.binding.AbstractGenericBindingProvider;
 import org.openhab.model.item.binding.BindingConfigParseException;
 import org.slf4j.Logger;
@@ -42,7 +42,7 @@ public class MyqGenericBindingProvider extends AbstractGenericBindingProvider
 	}
 
 	/**
-	 * @{inheritDoc
+	 * {@inheritDoc}
 	 */
 	@Override
 	public void validateItemType(Item item, String bindingConfig)
@@ -65,11 +65,10 @@ public class MyqGenericBindingProvider extends AbstractGenericBindingProvider
 	@Override
 	public void processBindingConfiguration(String context, Item item,
 			String bindingConfig) throws BindingConfigParseException {
-		super.processBindingConfiguration(context, item, bindingConfig);
 		MyqBindingConfig config = parseBindingConfig(item, bindingConfig);
 
-		// parse bindingconfig here ...
 		addBindingConfig(item, config);
+		super.processBindingConfiguration(context, item, bindingConfig);
 	}
 
 	/**
@@ -79,15 +78,8 @@ public class MyqGenericBindingProvider extends AbstractGenericBindingProvider
 			throws BindingConfigParseException {
 		final MyqBindingConfig config = new MyqBindingConfig();
 
-		if (item instanceof SwitchItem) {
-			config.type = ITEMTYPE.Switch;
-		} else if (item instanceof RollershutterItem) {
-			config.type = ITEMTYPE.Rollershutter;
-		} else if (item instanceof ContactItem) {
-			config.type = ITEMTYPE.ContactStatus;
-		} else if (item instanceof StringItem) {
-			config.type = ITEMTYPE.StringStatus;
-		}
+		config.acceptedDataTypes = new ArrayList<Class<? extends State>>(
+				item.getAcceptedDataTypes());
 		config.deviceIndex = Integer.parseInt(bindingConfig);
 		return config;
 	}

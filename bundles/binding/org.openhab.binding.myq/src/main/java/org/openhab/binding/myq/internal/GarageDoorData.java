@@ -10,17 +10,16 @@ package org.openhab.binding.myq.internal;
 
 import java.io.IOException;
 import java.util.LinkedList;
+import java.util.regex.Pattern;
 
 import org.codehaus.jackson.JsonNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * This Class parses the JSON data and creates a HashMap of Garage Door Opener
- * Devices with the TypeName as the Key.
+ * This Class parses the JSON data and creates a LinkedList of Garage Door Openers
  * <ul>
- * <li>success: JSON request was successful</li>
- * <li>devices: HashMap of Devices</li>
+ * <li>devices: LinkedList of Devices</li>
  * </ul>
  * 
  * @author Scott Hanson
@@ -29,16 +28,18 @@ import org.slf4j.LoggerFactory;
 public class GarageDoorData {
 	static final Logger logger = LoggerFactory.getLogger(GarageDoorData.class);
 
+	/**
+	 * Matching pattern for door device types, some models have spaces in them, some don't
+	 */
+	private static final Pattern DEVICE_TYPE_PATTERN = Pattern.compile("Garage\\s?Door\\s?Opener");
+	
 	LinkedList<GarageDoorDevice> devices = new LinkedList<GarageDoorDevice>();
 
 	/**
 	 * Constructor of the GarageDoorData.
 	 * 
-	 * @param deviceStatusData
-	 *            The Json string as it has been returned myq website.
-	 * 
-	 * @param logData
-	 *            Boolean to determine if devicedata should be logged.
+	 * @param rootNode
+	 *            The Json node returned from the myq website.
 	 */
 	public GarageDoorData(JsonNode rootNode) throws IOException {
 		if (rootNode.has("Devices")) {
@@ -53,9 +54,7 @@ public class GarageDoorData {
 					String deviceType = node.get(i).get("MyQDeviceTypeName")
 							.asText();
 
-					if (deviceType.contains("Garage")
-							&& deviceType.contains("Door")
-							&& deviceType.contains("Opener")) {
+					if (DEVICE_TYPE_PATTERN.matcher(deviceType).matches()) {
 						JsonNode attributes = node.get(i).get("Attributes");
 						if (attributes.isArray()) {
 							int attributesSize = attributes.size();
@@ -71,8 +70,7 @@ public class GarageDoorData {
 											doorstate);
 
 									devices.add(new GarageDoorDevice(deviceId,
-													deviceType, deviceName,
-													doorstate));
+											deviceType, deviceName, doorstate));
 									break;
 								}
 							}
@@ -82,7 +80,7 @@ public class GarageDoorData {
 			}
 		}
 	}
-	
+
 	public GarageDoorDevice getDevice(int index) {
 		return index >= devices.size() ? null : devices.get(index);
 	}

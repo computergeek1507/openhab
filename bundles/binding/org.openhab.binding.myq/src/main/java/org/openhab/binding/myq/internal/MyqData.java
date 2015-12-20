@@ -19,6 +19,8 @@ import org.codehaus.jackson.map.ObjectMapper;
 import static org.openhab.io.net.http.HttpUtil.executeUrl;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 import java.util.Properties;
 
 /**
@@ -27,8 +29,8 @@ import java.util.Properties;
  * <ul>
  * <li>userName: myQ Login Username</li>
  * <li>password: myQ Login Password</li>
- * <li>logDeviceData: Log Device Data</li>
- * <li>sercurityTokin: sercurityTokin for API requests</li>
+ * <li>sercurityToken: sercurityToken for API requests</li>
+ * <li>header: http header data</li>
  * <li>webSite: url of myQ API</li>
  * <li>appId: appId for API requests</li>
  * </ul>
@@ -40,14 +42,17 @@ import java.util.Properties;
 public class MyqData {
 	static final Logger logger = LoggerFactory.getLogger(MyqData.class);
 
+	private static final String WEBSITE = "https://myqexternal.myqdevice.com";
+	public static final String DEFAULT_APP_ID = "JVM/G9Nwih5BwKgNCjLxiFUQxQijAebyyg8QUHr7JOrP+tuPb8iHfRHKwTmDzHOu";
+	public static final int DEFAUALT_TIMEOUT = 5000;
+
 	private String userName;
 	private String password;
-	private String sercurityTokin;
-
+	private String appId;
+	private int timeout;
+	
+	private String sercurityToken;
 	private Properties header;
-	private final String webSite = "https://myqexternal.myqdevice.com";
-	private final String appId = "JVM/G9Nwih5BwKgNCjLxiFUQxQijAebyyg8QUHr7JOrP+tuPb8iHfRHKwTmDzHOu";
-
 
 	/**
 	 * Constructor For Chamberlain MyQ http connection
@@ -58,13 +63,27 @@ public class MyqData {
 	 * @param password
 	 *            Chamberlain MyQ password
 	 * 
-	 * @param logdevicedata
-	 *            Log Device Data to openHAB Log
+	 * @param appId
+	 *            Chamberlain Application Id, defaults to DEFAULT_APP_ID if null
 	 * 
+	 * @param timeout
+	 *            HTTP timeout in milliseconds, defaults to DEFAUALT_TIMEOUT if not > 0
 	 */
-	public MyqData(String username, String password) {
+	public MyqData(String username, String password, String appId, int timeout) {
 		this.userName = username;
 		this.password = password;
+
+		if (appId != null) {
+			this.appId = appId;
+		} else {
+			this.appId = DEFAULT_APP_ID;
+		}
+
+		if (timeout > 0) {
+			this.timeout = timeout;
+		} else {
+			this.timeout = DEFAUALT_TIMEOUT;
+		}
 
 		header = new Properties();
 		header.put("Accept", "application/json");
@@ -72,18 +91,16 @@ public class MyqData {
 	}
 
 	/**
-	 * Retrieves garage door device data from myq website returns null if
-	 * connection fails or user login fails
+	 * Retrieves garage door device data from myq website, throws if connection
+	 * fails or user login fails
 	 * 
-	 * @param attemps
-	 *            Attempt number when it recursively calls itself
 	 */
 	public GarageDoorData getGarageData() throws InvalidLoginException,
 			IOException {
 		logger.debug("Retreiveing door data");
 		String url = String.format(
 				"%s/api/v4/userdevicedetails/get?appId=%s&SecurityToken=%s",
-				webSite, appId, getSecurityToken());
+				WEBSITE, enc(appId), enc(getSecurityToken()));
 
 		JsonNode data = request("GET", url, null, null, true);
 
@@ -91,17 +108,17 @@ public class MyqData {
 	}
 
 	/**
-	 * Validates Username and Password then saved sercurityTokin to a variable
+	 * Validates Username and Password then saved sercurityToken to a variable
 	 */
 	private void login() throws InvalidLoginException, IOException {
 		logger.debug("attempting to login");
 		String url = String
 				.format("%s/api/user/validate?appId=%s&SecurityToken=null&username=%s&password=%s",
-						webSite, appId, userName, password);
+						WEBSITE, enc(appId), enc(userName), enc(password));
 
 		JsonNode data = request("GET", url, null, null, true);
 		LoginData login = new LoginData(data);
-		sercurityTokin = login.getSecurityToken();
+		sercurityToken = login.getSecurityToken();
 	}
 
 	/**
@@ -112,19 +129,17 @@ public class MyqData {
 	 *            MyQ deviceID of Garage Door Opener.
 	 * @param state
 	 *            Desired state to put the door in, 1 = open, 0 = closed
-	 * @param attemps
-	 *            Attempt number when it recursively calls itself
 	 */
 	public void executeGarageDoorCommand(int deviceID, int state)
 			throws InvalidLoginException, IOException {
 		String message = String.format("{\"ApplicationId\":\"%s\","
 				+ "\"SecurityToken\":\"%s\"," + "\"MyQDeviceId\":\"%d\","
 				+ "\"AttributeName\":\"desireddoorstate\","
-				+ "\"AttributeValue\":\"%d\"}", appId, sercurityTokin,
+				+ "\"AttributeValue\":\"%d\"}", appId, sercurityToken,
 				deviceID, state);
 		String url = String
 				.format("%s/api/v4/deviceattribute/putdeviceattribute?appId=%s&SecurityToken=%s",
-						webSite, appId, getSecurityToken());
+						WEBSITE, enc(appId), enc(getSecurityToken()));
 
 		request("PUT", url, message, "application/json", true);
 	}
@@ -138,10 +153,10 @@ public class MyqData {
 	 * @throws InvalidLoginException
 	 */
 	private String getSecurityToken() throws IOException, InvalidLoginException {
-		if (sercurityTokin == null) {
+		if (sercurityToken == null) {
 			login();
 		}
-		return sercurityTokin;
+		return sercurityToken;
 	}
 
 	/**
@@ -171,12 +186,13 @@ public class MyqData {
 
 		String dataString = executeUrl(method, url, header,
 				payload == null ? null : IOUtils.toInputStream(payload),
-				payloadType, 5000);
+				payloadType, timeout);
 
 		logger.debug("Received MyQ  JSON: {}", dataString);
 
-		if (dataString == null)
+		if (dataString == null) {
 			throw new IOException("Null response from MyQ server");
+		}
 
 		try {
 			ObjectMapper mapper = new ObjectMapper();
@@ -184,7 +200,7 @@ public class MyqData {
 			int returnCode = rootNode.get("ReturnCode").asInt();
 			logger.debug("myq ReturnCode: {}", returnCode);
 
-			MyQResponseCode rc = MyQResponseCode.FromCode(returnCode);
+			MyQResponseCode rc = MyQResponseCode.fromCode(returnCode);
 
 			switch (rc) {
 			case OK: {
@@ -212,11 +228,18 @@ public class MyqData {
 			throw new IOException("Could not parse response", e);
 		}
 	}
-
-	@SuppressWarnings("serial")
-	public class InvalidLoginException extends Exception {
-		public InvalidLoginException(String message) {
-			super(message);
+	
+	/**
+	 * URL Encode a string using UTF-8 encoding
+	 * @param string
+	 * @return
+	 */
+	private String enc(String string){
+		try {
+			return URLEncoder.encode(string, "UTF-8");
+		} catch (UnsupportedEncodingException e) {
+			logger.warn("Could not encode string",e);
+			return string;
 		}
 	}
 }
