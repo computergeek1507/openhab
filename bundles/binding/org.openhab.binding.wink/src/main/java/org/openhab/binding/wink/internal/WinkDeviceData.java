@@ -67,6 +67,15 @@ public class WinkDeviceData {
 						logger.info("binary_switch_id: "
 								+ Integer.toString(deviceId) + " DeviceName: "
 								+ deviceName + " RadioType: " + radioType);
+					} else if (devicenode.has("lock_id")) {
+						int deviceId = devicenode.get("lock_id")
+								.asInt();
+						String deviceName = devicenode.get("name").asText();
+						this.lightDevices.put(deviceName, new LightDevice(
+								devicenode));
+						logger.info("binary_switch_id: "
+								+ Integer.toString(deviceId) + " DeviceName: "
+								+ deviceName);
 					}
 				}
 			}
@@ -127,6 +136,9 @@ class LightDevice {
 		} else if (node.has("binary_switch_id")) {
 			this.DeviceId = node.get("binary_switch_id").asInt();
 			this.DeviceType = "binary_switches";
+		} else if (node.has("lock_id")) {
+			this.DeviceId = node.get("lock_id").asInt();
+			this.DeviceType = "locks";
 		}
 		if (node.has("radio_type"))
 			this.RadioType = node.get("radio_type").asText();
@@ -156,11 +168,21 @@ class LightDevice {
 		if (valueNode.has("powered"))
 			this.boolStates
 					.put("powered", valueNode.get("powered").asBoolean());
-		// this.Powered = valueNode.get("powered").asBoolean();
+		if (valueNode.has("locked"))
+			this.boolStates
+					.put("locked", valueNode.get("locked").asBoolean());
+		if (valueNode.has("vacation_mode"))
+			this.boolStates
+					.put("vacation_mode", valueNode.get("vacation_mode").asBoolean());
+		if (valueNode.has("auto_lock_enabled"))
+			this.boolStates
+					.put("auto_lock_enabled", valueNode.get("auto_lock_enabled").asBoolean());
+		if (valueNode.has("beeper_enabled"))
+			this.boolStates
+					.put("beeper_enabled", valueNode.get("beeper_enabled").asBoolean());
 		if (valueNode.has("brightness"))
 			this.doubleStates.put("brightness", valueNode.get("brightness")
 					.asDouble());
-		// this.Brightness = valueNode.get("brightness").asDouble();
 	}
 
 	public String getName() {
