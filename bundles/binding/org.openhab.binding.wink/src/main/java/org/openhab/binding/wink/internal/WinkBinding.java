@@ -16,6 +16,7 @@ import org.openhab.binding.wink.internal.WinkData;
 import org.openhab.binding.wink.WinkBindingProvider;
 import org.apache.commons.lang.StringUtils;
 import org.openhab.core.binding.AbstractActiveBinding;
+import org.openhab.core.library.types.IncreaseDecreaseType;
 import org.openhab.core.library.types.OnOffType;
 import org.openhab.core.library.types.OpenClosedType;
 import org.openhab.core.library.types.PercentType;
@@ -59,8 +60,8 @@ public class WinkBinding extends AbstractActiveBinding<WinkBindingProvider> {
 	/**
 	 * The WinkDeviceData. This object stores the garage door opener status
 	 */
-	//private WinkDeviceData deviceStatus = null;
-	
+	// private WinkDeviceData deviceStatus = null;
+
 	/**
 	 * If our login credentials are invalid then we will stop api requests until
 	 * our configuration is changed
@@ -84,7 +85,7 @@ public class WinkBinding extends AbstractActiveBinding<WinkBindingProvider> {
 	public void activate(final BundleContext bundleContext,
 			final Map<String, Object> configuration) {
 		this.bundleContext = bundleContext;
-		modified(configuration);		
+		modified(configuration);
 	}
 
 	/**
@@ -103,12 +104,12 @@ public class WinkBinding extends AbstractActiveBinding<WinkBindingProvider> {
 
 		String usernameString = (String) configuration.get("username");
 		String passwordString = (String) configuration.get("password");
-		
+
 		String clientId = (String) configuration.get("clientId");
 		if (StringUtils.isBlank(clientId)) {
 			clientId = WinkData.DEFAULT_CLIENT_ID;
 		}
-		
+
 		String clientSecret = (String) configuration.get("clientSecret");
 		if (StringUtils.isBlank(clientSecret)) {
 			clientSecret = WinkData.DEFAULT_CLIENT_SECRET;
@@ -123,10 +124,11 @@ public class WinkBinding extends AbstractActiveBinding<WinkBindingProvider> {
 		// read further config parameters here ...
 		if (StringUtils.isNotBlank(usernameString)
 				&& StringUtils.isNotBlank(passwordString)) {
-			winkOnlineData = new WinkData(usernameString, passwordString,clientId,clientSecret,timeout);
+			winkOnlineData = new WinkData(usernameString, passwordString,
+					clientId, clientSecret, timeout);
 
 			invalidCredentials = false;
-			setProperlyConfigured(true);			
+			setProperlyConfigured(true);
 		}
 	}
 
@@ -175,56 +177,61 @@ public class WinkBinding extends AbstractActiveBinding<WinkBindingProvider> {
 	@Override
 	protected void execute() {
 		// the frequently executed code (polling) goes here ...
-		if (invalidCredentials || this.winkOnlineData == null){
+		if (invalidCredentials || this.winkOnlineData == null) {
 			logger.debug("Invalid Account Credentials");
 			return;
 		}
 		try {
 			WinkDeviceData deviceStatus = winkOnlineData.getWinkData();
 
-		for (WinkBindingProvider provider : this.providers) {
-			for (String winkItemName : provider.getInBindingItemNames()) {
-				WinkBindingConfig deviceConfig = getConfigForItemName(winkItemName);
+			for (WinkBindingProvider provider : this.providers) {
+				for (String winkItemName : provider.getInBindingItemNames()) {
+					WinkBindingConfig deviceConfig = getConfigForItemName(winkItemName);
 
-				if (deviceConfig != null) {
-					if (deviceStatus.getLightDevices().containsKey(
-							deviceConfig.getDeviceName())) {
-						LightDevice lightBulb = deviceStatus
-								.getLightDevices().get(
-										deviceConfig.getDeviceName());
-						if (deviceConfig.getType() == WinkBindingConfig.BindingType.switching) {
-							if (lightBulb.hasBoolState(deviceConfig
-									.getParameter())) {
-								eventPublisher.postUpdate(winkItemName,
-										lightBulb.getBoolState(deviceConfig
-												.getParameter()) ? OnOffType.ON
-												: OnOffType.OFF);
-							}
-						} else if (deviceConfig.getType() == WinkBindingConfig.BindingType.brightness) {
-							if (lightBulb.hasDoubleState(deviceConfig
-									.getParameter())) {
-								PercentType newPercent = new PercentType(
-										(int) Math.round(lightBulb
-												.getDoubleState(deviceConfig
-														.getParameter()) * 100.0));
-								eventPublisher.postUpdate(winkItemName,
-										newPercent);
-							}
-						} else if (deviceConfig.getType() == WinkBindingConfig.BindingType.status) {
-							if (lightBulb.hasTextProperty(deviceConfig
-									.getParameter())) {
-								eventPublisher.postUpdate(
-										winkItemName,
-										new StringType(lightBulb
-												.getTextProperty(deviceConfig
-														.getParameter())));
+					if (deviceConfig != null) {
+						if (deviceStatus.getLightDevices().containsKey(
+								deviceConfig.getDeviceName())) {
+							LightDevice lightBulb = deviceStatus
+									.getLightDevices().get(
+											deviceConfig.getDeviceName());
+							if (deviceConfig.getType() == WinkBindingConfig.BindingType.switching) {
+								if (lightBulb.hasBoolState(deviceConfig
+										.getParameter())) {
+									eventPublisher
+											.postUpdate(
+													winkItemName,
+													lightBulb
+															.getBoolState(deviceConfig
+																	.getParameter()) ? OnOffType.ON
+															: OnOffType.OFF);
+								}
+							} else if (deviceConfig.getType() == WinkBindingConfig.BindingType.brightness) {
+								if (lightBulb.hasDoubleState(deviceConfig
+										.getParameter())) {
+									PercentType newPercent = new PercentType(
+											(int) Math.round(lightBulb
+													.getDoubleState(deviceConfig
+															.getParameter()) * 100.0));
+									eventPublisher.postUpdate(winkItemName,
+											newPercent);
+								}
+							} else if (deviceConfig.getType() == WinkBindingConfig.BindingType.status) {
+								if (lightBulb.hasTextProperty(deviceConfig
+										.getParameter())) {
+									eventPublisher
+											.postUpdate(
+													winkItemName,
+													new StringType(
+															lightBulb
+																	.getTextProperty(deviceConfig
+																			.getParameter())));
 
+								}
 							}
 						}
 					}
 				}
 			}
-		}
 		} catch (InvalidLoginException e) {
 			logger.error("Could not log in, please check your credentials.", e);
 			invalidCredentials = true;
@@ -248,9 +255,9 @@ public class WinkBinding extends AbstractActiveBinding<WinkBindingProvider> {
 		} else {
 			logger.warn("Command '{}' for item '{}' not sent", command,
 					itemName);
-		}		
+		}
 	}
-	
+
 	/**
 	 * Checks whether the command is value and if the deviceID exists then get
 	 * status of Garage Door Opener and send command to change it's state
@@ -268,27 +275,50 @@ public class WinkBinding extends AbstractActiveBinding<WinkBindingProvider> {
 		}
 		try {
 			// only switch type is valid
-			if (deviceConfig.getType() != WinkBindingConfig.BindingType.switching &&
-					deviceConfig.getType() != WinkBindingConfig.BindingType.brightness	) {
+			if (deviceConfig.getType() != WinkBindingConfig.BindingType.switching
+					&& deviceConfig.getType() != WinkBindingConfig.BindingType.brightness) {
 				return;
 			}
 			// only send command if switch
 			if (command instanceof OnOffType) {
 				WinkDeviceData deviceStatus = winkOnlineData.getWinkData();
-		
+
 				if (deviceStatus.getLightDevices().containsKey(
 						deviceConfig.getDeviceName())) {
 					LightDevice lightBulb = deviceStatus.getLightDevices().get(
 							deviceConfig.getDeviceName());
-					
-					winkOnlineData.updateDeviceState(lightBulb, deviceConfig.getParameter(), Boolean.toString((((OnOffType) command).equals(OnOffType.ON))));
-					eventPublisher.postUpdate(itemName,(OnOffType) command);
+
+					winkOnlineData.updateDeviceState(lightBulb, deviceConfig
+							.getParameter(), Boolean
+							.toString((((OnOffType) command)
+									.equals(OnOffType.ON))));
+					eventPublisher.postUpdate(itemName, (OnOffType) command);
 					// Thread.sleep(1000);
 					// get status again
-					//this.execute();
+					// this.execute();
 				} else {
 					logger.warn("no wink device found with this name: "
 							+ deviceConfig.getDeviceName());
+				}
+			}
+			if (command instanceof PercentType) {
+				if (deviceConfig.getType().equals(
+						WinkBindingConfig.BindingType.brightness)) {
+					WinkDeviceData deviceStatus = winkOnlineData.getWinkData();
+					if (deviceStatus.getLightDevices().containsKey(
+							deviceConfig.getDeviceName())) {
+						LightDevice lightBulb = deviceStatus.getLightDevices()
+								.get(deviceConfig.getDeviceName());
+
+						winkOnlineData
+								.updateDeviceState(
+										lightBulb,
+										deviceConfig.getParameter(),
+										Double.toString(((double) ((PercentType) command)
+												.intValue()) / 100.0));
+						eventPublisher.postUpdate(itemName,
+								(PercentType) command);
+					}
 				}
 			}
 		} catch (InvalidLoginException e) {

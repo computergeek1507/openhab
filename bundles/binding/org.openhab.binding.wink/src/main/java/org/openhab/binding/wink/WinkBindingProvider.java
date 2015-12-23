@@ -17,8 +17,7 @@ import org.openhab.core.binding.BindingProvider;
  * @author Scott Hanson
  * @since 1.8.0
  */
-public interface WinkBindingProvider extends BindingProvider
-{
+public interface WinkBindingProvider extends BindingProvider {
 	/**
 	 * Returns the configuration for the item with the given name.
 	 * 

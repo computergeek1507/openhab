@@ -27,35 +27,36 @@ import java.util.Properties;
 
 /**
  * This Class handles the Chamberlain Wink http connection.
- * @method Login() 
  * 
- * <ul>
- * <li>userName: Login Username</li>
- * <li>password: Login Password</li>
- * <li>sercurityTokin: sercurityTokin for API requests</li>
- * <li>webSite: url of API</li>
- * <li>appId: appId for API requests</li>
- * <li>MaxRetrys: max login attempts in a row</li>
- * </ul>
+ * @method Login()
+ * 
+ *         <ul>
+ *         <li>userName: Login Username</li>
+ *         <li>password: Login Password</li>
+ *         <li>accessToken: accessToken for API requests</li>
+ *         <li>refreshToken: refreshToken for API requests</li>
+ *         <li>WEBSITE: url of API</li>
+ *         <li>clientId: clientId for API requests</li>
+ *         <li>clientSecret: clientSecret for API requests</li>
+ *         </ul>
  * 
  * @author Scott Hanson
  * @since 1.8.0
  */
-public class WinkData
-{
+public class WinkData {
 	static final Logger logger = LoggerFactory.getLogger(WinkData.class);
 
 	private static final String WEBSITE = "https://winkapi.quirky.com";
 	public static final String DEFAULT_CLIENT_ID = "9156a2c35bc52e9977eda916506a7d16";
 	public static final String DEFAULT_CLIENT_SECRET = "a06e5da1224afe4f244f39078f7502ba";
 	public static final int DEFAUALT_TIMEOUT = 5000;
-	
+
 	private String username;
 	private String password;
 	private String clientId;
 	private String clientSecret;
 	private int timeout;
-	
+
 	private String accessToken;
 	private String refreshToken;
 
@@ -69,25 +70,28 @@ public class WinkData
 	 *            Wink password
 	 * 
 	 * @param clientId
-	 *            Wink Developer Client ID, defaults to DEFAULT_CLIENT_ID if null
+	 *            Wink Developer Client ID, defaults to DEFAULT_CLIENT_ID if
+	 *            null
 	 * 
 	 * @param clientSecret
-	 *            Wink Developer Client Secret, defaults to DEFAULT_CLIENT_SECRET if null
+	 *            Wink Developer Client Secret, defaults to
+	 *            DEFAULT_CLIENT_SECRET if null
 	 * 
 	 * @param timeout
-	 *            HTTP timeout in milliseconds, defaults to DEFAUALT_TIMEOUT if not > 0
+	 *            HTTP timeout in milliseconds, defaults to DEFAUALT_TIMEOUT if
+	 *            not > 0
 	 */
-	public WinkData(String username, String password, String clientId, String clientSecret, int timeout)
-	{
+	public WinkData(String username, String password, String clientId,
+			String clientSecret, int timeout) {
 		this.username = username;
 		this.password = password;
-		
+
 		if (clientId != null) {
 			this.clientId = clientId;
 		} else {
 			this.clientId = DEFAULT_CLIENT_ID;
 		}
-		
+
 		if (clientSecret != null) {
 			this.clientSecret = clientSecret;
 		} else {
@@ -100,17 +104,17 @@ public class WinkData
 			this.timeout = DEFAUALT_TIMEOUT;
 		}
 	}
-	
+
 	/**
 	 * Gets Wink Data in WinkData object format
 	 */
-	public WinkDeviceData getWinkData()  throws InvalidLoginException,
-		IOException {
+	public WinkDeviceData getWinkData() throws InvalidLoginException,
+			IOException {
 
 		logger.debug("Retreiveing wink device data");
-		if(null == this.accessToken)
+		if (null == this.accessToken)
 			login();
-		String url =  String.format("%s/users/me/wink_devices",WEBSITE);	
+		String url = String.format("%s/users/me/wink_devices", WEBSITE);
 		Properties header = new Properties();
 		header.put("Accept", "application/json");
 		header.put("authorization", "Bearer " + this.accessToken);
@@ -118,75 +122,49 @@ public class WinkData
 
 		return new WinkDeviceData(data);
 	}
-	
-	public LightDevice updateDeviceState(LightDevice device, String parareter, String value) 
-			throws InvalidLoginException, IOException {
-		String url =  String.format("%s/%s/%s",WEBSITE,device.getDeviceType(),device.getDeviceId());
-		
-		String message =  String.format("{\n    \"desired_state\":{\"%s\":%s}\n}",parareter,value);
-		
+
+	public LightDevice updateDeviceState(LightDevice device, String parareter,
+			String value) throws InvalidLoginException, IOException {
+		String url = String.format("%s/%s/%s", WEBSITE, device.getDeviceType(),
+				device.getDeviceId());
+
+		String message = String.format(
+				"{\n    \"desired_state\":{\"%s\":%s}\n}", parareter, value);
+
 		Properties header = new Properties();
 		header.put("Accept", "application/json");
 		header.put("authorization", "Bearer " + this.accessToken);
 
-		JsonNode data = request("PUT", header, url, message, "application/json", true);
+		JsonNode data = request("PUT", header, url, message,
+				"application/json", true);
 		LightDevice updateLight = new LightDevice(data);
 		return updateLight;
-		//WinkDeviceData update = new WinkDeviceData(data);
-		
-		//return update.getLightDevice(device.getName());
-		
-		/*
-		String output = executeUrl("PUT", url, header, IOUtils.toInputStream(message), "application/json", 1000);
-
-		logger.debug("Sent message: '" + message + "' to " + url);
-		if (output == null) 
-		{
-			logger.error("Failed to connect to Wink site");
-			return false;
-		}
-		logger.debug("Received Wink Login JSON: {}", output);
-		
-		return true;
-		*/
 	}
-	
+
 	/**
-	 * Validates Username and Password then saved accessToken and refreshToken to variables
-	 * throws if return code from API is not correct or connection fails
+	 * Validates Username and Password then saved accessToken and refreshToken
+	 * to variables throws if return code from API is not correct or connection
+	 * fails
 	 */
 	private void login() throws InvalidLoginException, IOException {
 		logger.debug("attempting to login");
-		String url =  String.format("%s/oauth2/token",WEBSITE);
+		String url = String.format("%s/oauth2/token", WEBSITE);
 
-		
-		String message =  String.format("{\"client_id\":\"%s\",\"client_secret\":\"%s\",\"username\":\"%s\",\"password\":\"%s\",\"grant_type\":\"password\"}",
-				this.clientId,this.clientSecret,this.username,this.password);
-		
+		String message = String
+				.format("{\"client_id\":\"%s\",\"client_secret\":\"%s\",\"username\":\"%s\",\"password\":\"%s\",\"grant_type\":\"password\"}",
+						this.clientId, this.clientSecret, this.username,
+						this.password);
+
 		Properties header = new Properties();
 		header.put("Accept", "application/json");
-		
-		JsonNode data = request("POST",header, url, message, "application/json", true);
+
+		JsonNode data = request("POST", header, url, message,
+				"application/json", true);
 		WinkLoginData login = new WinkLoginData(data);
 		this.accessToken = login.getAccessToken();
 		this.refreshToken = login.getRefreshToken();
-		/*
-		String output = executeUrl("POST", url, IOUtils.toInputStream(message), "application/json", 1000);
-
-		logger.debug("Sent message: '" + message + "' to " + url);
-
-		if (output == null) 
-		{
-			logger.error("Failed to connect to Wink site");
-		}
-		logger.debug("Received Wink Login JSON: {}", output);
-		WinkLoginData login = new WinkLoginData(output);
-		
-		this.accessToken = login.getAccessToken();
-		this.refreshToken = login.getRefreshToken();*/
-
 	}
-	
+
 	/**
 	 * Make a request to the server, optionally retry the call if there is a
 	 * login issue. Will throw a InvalidLoginExcpetion if the account is
@@ -206,8 +184,8 @@ public class WinkData
 	 * @throws IOException
 	 * @throws InvalidLoginException
 	 */
-	private synchronized JsonNode request(String method, Properties header, String url,
-			String payload, String payloadType, boolean retry)
+	private synchronized JsonNode request(String method, Properties header,
+			String url, String payload, String payloadType, boolean retry)
 			throws IOException, InvalidLoginException {
 
 		logger.debug("Requsting URL {}", url);
@@ -223,42 +201,31 @@ public class WinkData
 		}
 
 		try {
-			if(dataString.length()==1)
+			if (dataString.length() == 1)
 				if (retry) {
 					login();
-					return request(method, header, url, payload, payloadType, false);
+					return request(method, header, url, payload, payloadType,
+							false);
 				}
 			ObjectMapper mapper = new ObjectMapper();
 			JsonNode rootNode = mapper.readTree(dataString);
-			
-			return rootNode;
-			//int returnCode = rootNode.get("ReturnCode").asInt();
-			//logger.debug("wink ReturnCode: {}", returnCode);
 
-			//WinkResponseCode rc = WinkResponseCode.fromCode(returnCode);
-/*
-			switch (rc) {
-			case OK: {
-				return rootNode;
-			}
-			case ACCOUNT_INVALID:
-			case ACCOUNT_NOT_FOUND:
-			case ACCOUNT_LOCKED:
-			case ACCOUNT_LOCKED_PENDING:
-				// these are bad, we do not want to continue to log in and
-				// lock an account
-				throw new InvalidLoginException(rc.getDesc());
-			case LOGIN_ERROR:
-				// Our session key has expired, request a new one
-				if (retry) {
-					login();
-					return request(method, header, url, payload, payloadType, false);
-				}
-				// fall through to default
-			default:
-				throw new IOException("Request Failed: " + rc.getDesc());
-			}
-*/
+			return rootNode;
+			// int returnCode = rootNode.get("ReturnCode").asInt();
+			// logger.debug("wink ReturnCode: {}", returnCode);
+
+			// WinkResponseCode rc = WinkResponseCode.fromCode(returnCode);
+			/*
+			 * switch (rc) { case OK: { return rootNode; } case ACCOUNT_INVALID:
+			 * case ACCOUNT_NOT_FOUND: case ACCOUNT_LOCKED: case
+			 * ACCOUNT_LOCKED_PENDING: // these are bad, we do not want to
+			 * continue to log in and // lock an account throw new
+			 * InvalidLoginException(rc.getDesc()); case LOGIN_ERROR: // Our
+			 * session key has expired, request a new one if (retry) { login();
+			 * return request(method, header, url, payload, payloadType, false);
+			 * } // fall through to default default: throw new
+			 * IOException("Request Failed: " + rc.getDesc()); }
+			 */
 		} catch (JsonProcessingException e) {
 			throw new IOException("Could not parse response", e);
 		}

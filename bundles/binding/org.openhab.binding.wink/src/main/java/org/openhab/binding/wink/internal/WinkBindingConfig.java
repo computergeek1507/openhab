@@ -72,10 +72,7 @@ public class WinkBindingConfig implements BindingConfig
 		this.deviceName = name;
 		this.parameter = parameter;
 
-//		if (type != null)
-//			this.type = parseBindingTypeConfigString(type);
-//		else
-			this.type = WinkBindingConfig.BindingType.brightness;		
+		this.type = WinkBindingConfig.BindingType.brightness;		
 
 		if (stepSize != null)
 			this.stepSize = parseStepSizeConfigString(stepSize);
@@ -89,11 +86,14 @@ public class WinkBindingConfig implements BindingConfig
 		this.deviceName = name;
 		this.parameter = parameter;
 
-//		if (type != null)
-//			this.type = parseBindingTypeConfigString(type);
-//		else
+		
+		this.stepSize = 25;
+		if(parameter.contains("brightness")){
+			this.type = WinkBindingConfig.BindingType.brightness;
+		}
+		else {
 			this.type = WinkBindingConfig.BindingType.switching;
-			this.stepSize = 25;
+		}
 	}
 	
 	/**
