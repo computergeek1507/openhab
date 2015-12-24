@@ -192,7 +192,7 @@ public class WinkData {
 
 		String dataString = executeUrl(method, url, header,
 				payload == null ? null : IOUtils.toInputStream(payload),
-				payloadType, 5000);
+				payloadType, timeout);
 
 		logger.debug("Received Wink JSON: {}", dataString);
 

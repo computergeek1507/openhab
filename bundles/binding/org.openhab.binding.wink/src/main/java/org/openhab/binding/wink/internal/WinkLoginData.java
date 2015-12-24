@@ -1,10 +1,8 @@
 package org.openhab.binding.wink.internal;
 
 import java.io.IOException;
-import java.util.Map;
 
 import org.codehaus.jackson.JsonNode;
-import org.codehaus.jackson.map.ObjectMapper;
 import org.openhab.binding.wink.internal.InvalidDataException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,9 +21,6 @@ public class WinkLoginData {
 	 */
 	public WinkLoginData(JsonNode root) throws IOException,
 			InvalidDataException {
-		ObjectMapper mapper = new ObjectMapper();
-		// JsonNode rootNode = mapper.readTree(loginData);
-		// Map<String, Object> treeData = mapper.readValue(rootNode, Map.class);
 		JsonNode dataNode = root.get("data");
 		this.accessToken = dataNode.get("access_token").asText();
 		this.refreshToken = dataNode.get("refresh_token").asText();

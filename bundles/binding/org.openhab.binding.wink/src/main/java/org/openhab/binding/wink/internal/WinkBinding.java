@@ -16,13 +16,12 @@ import org.openhab.binding.wink.internal.WinkData;
 import org.openhab.binding.wink.WinkBindingProvider;
 import org.apache.commons.lang.StringUtils;
 import org.openhab.core.binding.AbstractActiveBinding;
-import org.openhab.core.library.types.IncreaseDecreaseType;
 import org.openhab.core.library.types.OnOffType;
-import org.openhab.core.library.types.OpenClosedType;
 import org.openhab.core.library.types.PercentType;
 import org.openhab.core.library.types.StringType;
 import org.openhab.core.types.Command;
 import org.openhab.core.types.State;
+import org.openhab.core.types.UnDefType;
 import org.osgi.framework.BundleContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,6 +42,7 @@ public class WinkBinding extends AbstractActiveBinding<WinkBindingProvider> {
 	 * set in the activate() method and must not be accessed anymore once the
 	 * deactivate() method was called or before activate() was called.
 	 */
+	@SuppressWarnings("unused")
 	private BundleContext bundleContext;
 
 	/**
@@ -190,43 +190,45 @@ public class WinkBinding extends AbstractActiveBinding<WinkBindingProvider> {
 
 					if (deviceConfig != null) {
 						if (deviceStatus.getLightDevices().containsKey(
-								deviceConfig.getDeviceName())) {
+								deviceConfig.deviceName)) {
 							LightDevice lightBulb = deviceStatus
 									.getLightDevices().get(
-											deviceConfig.getDeviceName());
-							if (deviceConfig.getType() == WinkBindingConfig.BindingType.switching) {
-								if (lightBulb.hasBoolState(deviceConfig
-										.getParameter())) {
-									eventPublisher
-											.postUpdate(
-													winkItemName,
-													lightBulb
-															.getBoolState(deviceConfig
-																	.getParameter()) ? OnOffType.ON
-															: OnOffType.OFF);
+											deviceConfig.deviceName);
+							if (lightBulb != null) {
+								State newState = UnDefType.UNDEF;
+								for (Class<? extends State> type : deviceConfig.acceptedDataTypes) {
+									if (OnOffType.class == type) {
+										if (lightBulb
+												.hasBoolState(deviceConfig.parameter)) {
+											if (lightBulb
+													.getBoolState(deviceConfig.parameter)) {
+												newState = OnOffType.ON;
+											} else {
+												newState = OnOffType.OFF;
+											}
+											break;
+										}
+									} else if (PercentType.class == type) {
+										if (lightBulb
+												.hasDoubleState(deviceConfig.parameter)) {
+											int intState = (int) (lightBulb
+													.getDoubleState(deviceConfig.parameter) * 100.0);
+											newState = new PercentType(intState);
+											break;
+										}
+									} else if (StringType.class == type) {
+										if (lightBulb
+												.hasTextProperty(deviceConfig.parameter)) {
+											String stringState = lightBulb
+													.getTextProperty(deviceConfig.parameter);
+											newState = new StringType(
+													stringState);
+											break;
+										}
+									}
 								}
-							} else if (deviceConfig.getType() == WinkBindingConfig.BindingType.brightness) {
-								if (lightBulb.hasDoubleState(deviceConfig
-										.getParameter())) {
-									PercentType newPercent = new PercentType(
-											(int) Math.round(lightBulb
-													.getDoubleState(deviceConfig
-															.getParameter()) * 100.0));
-									eventPublisher.postUpdate(winkItemName,
-											newPercent);
-								}
-							} else if (deviceConfig.getType() == WinkBindingConfig.BindingType.status) {
-								if (lightBulb.hasTextProperty(deviceConfig
-										.getParameter())) {
-									eventPublisher
-											.postUpdate(
-													winkItemName,
-													new StringType(
-															lightBulb
-																	.getTextProperty(deviceConfig
-																			.getParameter())));
-
-								}
+								eventPublisher.postUpdate(winkItemName,
+										newState);
 							}
 						}
 					}
@@ -274,52 +276,26 @@ public class WinkBinding extends AbstractActiveBinding<WinkBindingProvider> {
 			return;
 		}
 		try {
-			// only switch type is valid
-			if (deviceConfig.getType() != WinkBindingConfig.BindingType.switching
-					&& deviceConfig.getType() != WinkBindingConfig.BindingType.brightness) {
-				return;
-			}
-			// only send command if switch
-			if (command instanceof OnOffType) {
-				WinkDeviceData deviceStatus = winkOnlineData.getWinkData();
-
-				if (deviceStatus.getLightDevices().containsKey(
-						deviceConfig.getDeviceName())) {
-					LightDevice lightBulb = deviceStatus.getLightDevices().get(
-							deviceConfig.getDeviceName());
-
-					winkOnlineData.updateDeviceState(lightBulb, deviceConfig
-							.getParameter(), Boolean
-							.toString((((OnOffType) command)
-									.equals(OnOffType.ON))));
+			WinkDeviceData winkDeviceStatus = winkOnlineData.getWinkData();
+			LightDevice winkDevice = winkDeviceStatus
+					.getLightDevice(deviceConfig.deviceName);
+			if (winkDevice != null) {
+				if (command instanceof OnOffType) {
+					winkOnlineData.updateDeviceState(winkDevice,
+							deviceConfig.parameter, Boolean
+									.toString((((OnOffType) command)
+											.equals(OnOffType.ON))));
 					eventPublisher.postUpdate(itemName, (OnOffType) command);
-					// Thread.sleep(1000);
-					// get status again
-					// this.execute();
-				} else {
-					logger.warn("no wink device found with this name: "
-							+ deviceConfig.getDeviceName());
+				} else if (command instanceof PercentType) {
+					winkOnlineData.updateDeviceState(winkDevice,
+							deviceConfig.parameter, Double
+									.toString(((double) ((PercentType) command)
+											.intValue()) / 100.0));
+					eventPublisher.postUpdate(itemName, (PercentType) command);
 				}
-			}
-			if (command instanceof PercentType) {
-				if (deviceConfig.getType().equals(
-						WinkBindingConfig.BindingType.brightness)) {
-					WinkDeviceData deviceStatus = winkOnlineData.getWinkData();
-					if (deviceStatus.getLightDevices().containsKey(
-							deviceConfig.getDeviceName())) {
-						LightDevice lightBulb = deviceStatus.getLightDevices()
-								.get(deviceConfig.getDeviceName());
-
-						winkOnlineData
-								.updateDeviceState(
-										lightBulb,
-										deviceConfig.getParameter(),
-										Double.toString(((double) ((PercentType) command)
-												.intValue()) / 100.0));
-						eventPublisher.postUpdate(itemName,
-								(PercentType) command);
-					}
-				}
+			} else {
+				logger.warn("no wink device found with name: {}",
+						deviceConfig.deviceName);
 			}
 		} catch (InvalidLoginException e) {
 			logger.error("Could not log in, please check your credentials.", e);
@@ -336,5 +312,4 @@ public class WinkBinding extends AbstractActiveBinding<WinkBindingProvider> {
 		}
 		return null;
 	}
-
 }
