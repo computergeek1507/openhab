@@ -13,12 +13,12 @@ import java.util.HashMap;
 import org.codehaus.jackson.JsonNode;
 
 /**
- * This Class holds the Garage Door Opener Device data.
+ * This Class holds the Wink Device data.
  * <ul>
  * <li>DeviceName: DeviceName from Wink App</li>
- * <li>DeviceType: Device Type.</li>
- * <li>DeviceName: Serial number of device I think</li>
- * <li>TypeName: Name That appears in myQ App</li>
+ * <li>DeviceId: Device ID from Wink API.</li>
+ * <li>RadioType: Radio Type used on Hub</li>
+ * <li>DeviceType: Device type used to update state</li>
  * <li></li>
  * </ul>
  * 

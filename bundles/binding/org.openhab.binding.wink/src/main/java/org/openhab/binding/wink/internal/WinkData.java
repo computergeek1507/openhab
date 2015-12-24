@@ -171,7 +171,9 @@ public class WinkData {
 	 * invalid, locked or soon to be locked.
 	 * 
 	 * @param method
-	 *            The Http Method Type (GET,PUT)
+	 *            The Http Method Type (GET,PUT,POST)
+	 * @param header
+	 *            The request HTTP header
 	 * @param url
 	 *            The request URL
 	 * @param payload

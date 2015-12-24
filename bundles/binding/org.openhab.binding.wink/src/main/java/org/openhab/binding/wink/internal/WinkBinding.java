@@ -58,11 +58,6 @@ public class WinkBinding extends AbstractActiveBinding<WinkBindingProvider> {
 	private WinkData winkOnlineData = null;
 
 	/**
-	 * The WinkDeviceData. This object stores the garage door opener status
-	 */
-	// private WinkDeviceData deviceStatus = null;
-
-	/**
 	 * If our login credentials are invalid then we will stop api requests until
 	 * our configuration is changed
 	 */
@@ -176,7 +171,6 @@ public class WinkBinding extends AbstractActiveBinding<WinkBindingProvider> {
 	 */
 	@Override
 	protected void execute() {
-		// the frequently executed code (polling) goes here ...
 		if (invalidCredentials || this.winkOnlineData == null) {
 			logger.debug("Invalid Account Credentials");
 			return;

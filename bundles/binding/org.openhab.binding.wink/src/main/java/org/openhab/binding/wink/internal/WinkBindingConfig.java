@@ -22,7 +22,7 @@ import org.openhab.core.types.State;
 public class WinkBindingConfig implements BindingConfig
 {
 	/**
-	 * The name under used by the wink app.
+	 * The device name under used by the wink app.
 	 */
 	String deviceName;	
 	String parameter;	
