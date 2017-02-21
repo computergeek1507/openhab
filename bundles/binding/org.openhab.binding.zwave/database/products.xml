@@ -3484,6 +3484,15 @@
             <Label lang="en">Touchscreen Deadbolt</Label>
             <ConfigFile>schlage/be468.xml</ConfigFile>
         </Product>
+	<Product>
+            <Reference>
+                <Type>6341</Type>
+                <Id>5044</Id>
+            </Reference>
+            <Model>BE469</Model>
+            <Label lang="en">Touchscreen Deadbolt</Label>
+            <ConfigFile>schlage/be469.xml</ConfigFile>
+        </Product>
     </Manufacturer>
     <Manufacturer>
         <Id>0184</Id>
@@ -3888,6 +3897,15 @@
   <Manufacturer>
     <Id>027A</Id>
     <Name>Zooz</Name>
+    <Product>
+      <Reference>
+        <Type>0101</Type>
+        <Id>000A</Id>
+      </Reference>
+      <Model>Zooz Z-Wave Smart Plug (ZEN06)</Model>
+      <Label lang="en">Smart Plug with 2 USB ports</Label>
+      <ConfigFile>zooz/zen06.xml</ConfigFile>
+    </Product>
     <Product>
       <Reference>
         <Type>2021</Type>
