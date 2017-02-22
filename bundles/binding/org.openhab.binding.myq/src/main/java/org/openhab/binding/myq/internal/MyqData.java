@@ -42,7 +42,6 @@ public class MyqData {
     static final Logger logger = LoggerFactory.getLogger(MyqData.class);
 
     private static final String WEBSITE = "https://myqexternal.myqdevice.com";
-    //public static final String DEFAULT_APP_ID = "JVM/G9Nwih5BwKgNCjLxiFUQxQijAebyyg8QUHr7JOrP+tuPb8iHfRHKwTmDzHOu";
     public static final String DEFAULT_APP_ID = "NWknvuBd7LoFHfXmKNMBcgajXtZEgKUh4V7WNzMidrpUUluDpVYVZx+xT4PCM5Kx";
 
     private static final String CRAFTSMAN_WEBSITE = "https://craftexternal.myqdevice.com";
@@ -111,9 +110,9 @@ public class MyqData {
         header = new Properties();
         header.put("Accept", "application/json");
         header.put("User-Agent", "Chamberlain/3.73");
-        header.put("BrandId", this.brandId );
+        header.put("BrandId", this.brandId);
         header.put("ApiVersion", "4.1");
-        header.put("Culture", "en");
+        header.put("Culture", CULTURE);
         header.put("MyQApplicationId", this.appId);
     }
 
@@ -125,7 +124,7 @@ public class MyqData {
     public MyqDeviceData getMyqData() throws InvalidLoginException, IOException {
         logger.trace("Retrieving door data");
         String url = String.format("%s/api/v4/userdevicedetails/get", websiteUrl);
-        header.put("SecurityToken", this.getSecurityToken());
+        header.put("SecurityToken", getSecurityToken());
         JsonNode data = request("GET", url, null, null, true);
 
         return new MyqDeviceData(data);
@@ -166,7 +165,7 @@ public class MyqData {
                         + "\"AttributeName\":\"%s\"," + "\"AttributeValue\":\"%d\"}",
                 appId, sercurityToken, deviceID, name, state);
         String url = String.format("%s/api/v4/DeviceAttribute/PutDeviceAttribute", websiteUrl);
-        header.put("SecurityToken", enc(this.getSecurityToken()));
+        header.put("SecurityToken", getSecurityToken());
         request("PUT", url, message, "application/json", true);
     }
 
@@ -212,7 +211,7 @@ public class MyqData {
         String dataString = executeUrl(method, url, header, payload == null ? null : IOUtils.toInputStream(payload),
                 payloadType, timeout);
 
-        logger.trace("Received MyQ  JSON: {}", dataString);
+        logger.trace("Received MyQ JSON: {}", dataString);
 
         if (dataString == null) {
             throw new IOException("Null response from MyQ server");
